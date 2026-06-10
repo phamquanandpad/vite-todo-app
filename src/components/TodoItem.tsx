@@ -1,4 +1,4 @@
-import { Todo } from '../types/api';
+import type { Todo } from '../types/api';
 import { useUpdateTodo, useDeleteTodo } from '../hooks/useTodos';
 
 export function TodoItem({ todo }: { todo: Todo }) {

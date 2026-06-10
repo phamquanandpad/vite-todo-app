@@ -13,9 +13,9 @@ All request/response JSON keys are **camelCase** (e.g. `accessToken`, `userId`, 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | POST | `/api/v1/auth/register` | – | Register a user (`username`, `email`, `password`, `password_confirmation`) → `201` |
-| POST | `/api/v1/auth/login` | – | Login → `{ user, accessToken, refreshToken }` |
-| POST | `/api/v1/auth/refresh` | – | Exchange `refreshToken` → new `{ accessToken, refreshToken }` |
-| DELETE | `/api/v1/auth/logout` | Bearer | Invalidate `refreshToken` → `204` |
+| POST | `/api/v1/auth/login` | – | Login → `{ user, accessToken }`. Refresh token set as HttpOnly cookie. |
+| POST | `/api/v1/auth/refresh` | – | Use HttpOnly `refresh_token` cookie → new `{ accessToken }`. New cookie rotated. |
+| DELETE | `/api/v1/auth/logout` | Bearer | Revoke refresh token (from cookie) → `204`. Cookie cleared. |
 | GET | `/api/v1/todos` | Bearer | List todos. Query: `status`, `page` (def 1), `limit` (def 20) → `{ data, meta }` |
 | POST | `/api/v1/todos` | Bearer | Create todo (`task`, `description?`, `status?`) → `201` |
 | GET | `/api/v1/todos/deleted` | Bearer | List soft-deleted (restorable) todos. Query: `page`, `limit` → `{ data, meta }` |
@@ -67,7 +67,8 @@ export interface Paginated<T> {
 export interface AuthResponse {
   user: Pick<User, 'username' | 'email'>;
   accessToken: string;
-  refreshToken: string;
+  // refreshToken is NOT in the response body — it is set by the server
+  // as an HttpOnly signed cookie (refresh_token).
 }
 
 // Errors come back as { errors: string[] } for 401/404/422
@@ -145,25 +146,14 @@ src/
 
 ## 4. Token storage & auth flow
 
-The API issues a short-lived **accessToken** and a longer-lived **refreshToken**. The login response also returns `user.id` indirectly — note the spec's login response only includes `username` and `email`, **not** the user `id`. Since `/users/{id}` needs an id, decode the JWT to obtain the subject claim, or have the backend include it. This guide decodes the access token.
+The API issues a short-lived **accessToken** (returned in the response body) and a longer-lived **refresh token** (set automatically as an HttpOnly signed cookie named `refresh_token` by the server — never exposed to JavaScript). The access token is kept **in memory only** (never in `localStorage` or `sessionStorage`) to minimise XSS exposure.
+
+The login response only includes `username` and `email`, **not** the user `id`. Since `/users/{id}` needs an id, decode the JWT `sub` claim from the access token.
 
 ```ts
 // src/auth/tokenStorage.ts
-const ACCESS = 'todo.accessToken';
-const REFRESH = 'todo.refreshToken';
-
-export const tokenStorage = {
-  getAccess: () => localStorage.getItem(ACCESS),
-  getRefresh: () => localStorage.getItem(REFRESH),
-  set: (access: string, refresh: string) => {
-    localStorage.setItem(ACCESS, access);
-    localStorage.setItem(REFRESH, refresh);
-  },
-  clear: () => {
-    localStorage.removeItem(ACCESS);
-    localStorage.removeItem(REFRESH);
-  },
-};
+// Access token lives in memory only (set/read by AuthContext and the axios client).
+// The refresh token is an HttpOnly cookie managed entirely by the server.
 
 // Minimal JWT payload decode (no verification — server verifies).
 export function decodeJwt<T = Record<string, unknown>>(token: string): T | null {
@@ -176,23 +166,24 @@ export function decodeJwt<T = Record<string, unknown>>(token: string): T | null 
 }
 ```
 
-> **Storage trade-off:** `localStorage` is simplest but is exposed to XSS. For higher security, have the backend set the refresh token as an `HttpOnly` cookie and keep only the access token in memory. The interceptor pattern below stays the same.
-
 ### Axios client with refresh-on-401
 
 ```ts
 // src/api/client.ts
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
-import { tokenStorage } from '../auth/tokenStorage';
+
+// Access token lives in memory. AuthContext calls setClientAccessToken after login/refresh.
+let _accessToken: string | null = null;
+export const setClientAccessToken = (token: string | null) => { _accessToken = token; };
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true, // send HttpOnly refresh_token cookie on every request
 });
 
 api.interceptors.request.use((config) => {
-  const token = tokenStorage.getAccess();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (_accessToken) config.headers.Authorization = `Bearer ${_accessToken}`;
   return config;
 });
 
@@ -200,14 +191,14 @@ api.interceptors.request.use((config) => {
 let refreshing: Promise<string> | null = null;
 
 async function refreshAccessToken(): Promise<string> {
-  const refreshToken = tokenStorage.getRefresh();
-  if (!refreshToken) throw new Error('No refresh token');
+  // The HttpOnly cookie is sent automatically via withCredentials.
   // Use a bare axios call so we don't recurse through this interceptor.
   const { data } = await axios.post(
     `${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/refresh`,
-    { refreshToken },
+    {},
+    { withCredentials: true },
   );
-  tokenStorage.set(data.accessToken, data.refreshToken);
+  _accessToken = data.accessToken;
   return data.accessToken;
 }
 
@@ -223,7 +214,7 @@ api.interceptors.response.use(
         original.headers = { ...original.headers, Authorization: `Bearer ${newToken}` };
         return api(original);
       } catch {
-        tokenStorage.clear();
+        _accessToken = null;
         window.location.assign('/login');
       }
     }
@@ -241,18 +232,29 @@ import { api } from './client';
 import type { AuthResponse } from '../types/api';
 
 const base = import.meta.env.VITE_API_BASE_URL;
+const jsonHeaders = { 'Content-Type': 'application/json', Accept: 'application/json' };
 
 export const authApi = {
   register: (body: {
     username: string; email: string;
     password: string; password_confirmation: string;
-  }) => axios.post(`${base}/api/v1/auth/register`, body).then((r) => r.data),
+  }) => axios.post(`${base}/api/v1/auth/register`, body, { headers: jsonHeaders }).then((r) => r.data),
 
   login: (body: { email: string; password: string }) =>
-    axios.post<AuthResponse>(`${base}/api/v1/auth/login`, body).then((r) => r.data),
+    axios.post<AuthResponse>(`${base}/api/v1/auth/login`, body, {
+      headers: jsonHeaders,
+      withCredentials: true, // receive the HttpOnly refresh_token cookie
+    }).then((r) => r.data),
 
-  logout: (refreshToken: string) =>
-    api.delete('/api/v1/auth/logout', { data: { refreshToken } }),
+  // Cookie is sent automatically; backend returns new accessToken.
+  refresh: () =>
+    axios.post<Pick<AuthResponse, 'accessToken'>>(`${base}/api/v1/auth/refresh`, {}, {
+      headers: jsonHeaders,
+      withCredentials: true,
+    }).then((r) => r.data),
+
+  // Cookie cleared by the backend. No body needed.
+  logout: () => api.delete('/api/v1/auth/logout'),
 };
 ```
 
@@ -312,47 +314,109 @@ export const usersApi = {
 
 ## 5. Auth context & protected routes
 
+The access token is stored in React state (memory) and synced to the axios client immediately on login to avoid a race where requests fire before the `useEffect` can run.
+
+On mount, `AuthProvider` silently calls `/auth/refresh` using the HttpOnly cookie to restore an existing session (e.g., after a page reload).
+
 ```tsx
 // src/auth/AuthContext.tsx
-import { createContext, useState, ReactNode } from 'react';
+import { createContext, useState, useEffect, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import { authApi } from '../api/auth';
-import { tokenStorage, decodeJwt } from './tokenStorage';
+import { setClientAccessToken } from '../api/client';
+import { decodeJwt } from './tokenStorage';
 
 interface AuthState {
   userId: number | null;
+  accessToken: string | null;
   isAuthenticated: boolean;
+  isInitializing: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  setAccessToken: (token: string | null) => void;
 }
 
 export const AuthContext = createContext<AuthState>(null!);
 
-function userIdFromToken(): number | null {
-  const t = tokenStorage.getAccess();
-  const payload = t ? decodeJwt<{ sub?: number | string }>(t) : null;
-  return payload?.sub != null ? Number(payload.sub) : null;
+// Shared promise across StrictMode double-mount so refresh is only called once.
+let initialTokenPromise: Promise<string | null> | null = null;
+function getInitialToken(): Promise<string | null> {
+  if (!initialTokenPromise) {
+    initialTokenPromise = authApi.refresh()
+      .then((res) => res.accessToken)
+      .catch(() => null);
+  }
+  return initialTokenPromise;
+}
+
+function userIdFromToken(token: string | null): number | null {
+  // The backend encodes { user_id: ... } (not the standard `sub` claim).
+  const payload = token ? decodeJwt<{ user_id?: number | string }>(token) : null;
+  return payload?.user_id != null ? Number(payload.user_id) : null;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [userId, setUserId] = useState<number | null>(userIdFromToken());
+  const [authState, setAuthState] = useState<{ accessToken: string | null; isInitializing: boolean }>({
+    accessToken: null,
+    isInitializing: true,
+  });
+
+  const { accessToken, isInitializing } = authState;
+
+  // Sync access token into the axios client whenever it changes.
+  useEffect(() => {
+    setClientAccessToken(accessToken);
+  }, [accessToken]);
+
+  // On mount, try to restore session via the HttpOnly refresh cookie.
+  useEffect(() => {
+    let cancelled = false;
+    getInitialToken().then((token) => {
+      if (!cancelled) {
+        // Only apply if login() hasn't already resolved (prevents clobbering).
+        setAuthState((prev) =>
+          prev.isInitializing
+            ? { accessToken: token, isInitializing: false }
+            : prev
+        );
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const setAccessToken = useCallback((token: string | null) => {
+    setAuthState((prev) => ({ ...prev, accessToken: token }));
+  }, []);
 
   const login = async (email: string, password: string) => {
     const res = await authApi.login({ email, password });
-    tokenStorage.set(res.accessToken, res.refreshToken);
-    setUserId(userIdFromToken());
+    // Set axios client synchronously so requests fired immediately after
+    // navigate() carry the Authorization header (before useEffect runs).
+    setClientAccessToken(res.accessToken);
+    setAuthState({ accessToken: res.accessToken, isInitializing: false });
   };
 
   const logout = async () => {
-    const refresh = tokenStorage.getRefresh();
-    try { if (refresh) await authApi.logout(refresh); } finally {
-      tokenStorage.clear();
-      setUserId(null);
+    try {
+      await authApi.logout();
+    } finally {
+      setClientAccessToken(null);
+      setAuthState({ accessToken: null, isInitializing: false });
     }
   };
 
+  const userId = userIdFromToken(accessToken);
+
   return (
-    <AuthContext.Provider
-      value={{ userId, isAuthenticated: userId != null, login, logout }}>
+    <AuthContext.Provider value={{
+      userId,
+      accessToken,
+      isAuthenticated: userId != null,
+      isInitializing,
+      login,
+      logout,
+      setAccessToken,
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -365,7 +429,9 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 
 export function ProtectedRoute() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isInitializing } = useAuth();
+  // Suspend rendering until the initial refresh attempt completes.
+  if (isInitializing) return null;
   return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
 }
 ```
@@ -709,7 +775,7 @@ end
 10. Enable CORS on the backend.
 11. Verify the full flow: register → login → CRUD todos → delete → restore from `/deleted` → token refresh on expiry → logout.
 
-## Open questions for the backend
+## Notes
 
-- **Login response lacks `user.id`** — the frontend needs it for `/users/{id}`. Either add `id` to the login/refresh response, or confirm the JWT `sub` claim carries the user id (this guide assumes `sub`).
-- **Refresh token rotation** — confirm whether `/auth/refresh` invalidates the old refresh token (this guide stores the rotated one returned in the response).
+- **Login response lacks `user.id`** — resolved: decode `user_id` from the JWT access token (the backend encodes `{ user_id: user.id }` as the payload claim, not the standard `sub` claim).
+- **Refresh token rotation** — confirmed: `/auth/refresh` creates a new refresh token record and sets it as a new HttpOnly cookie. The old token is implicitly superseded.

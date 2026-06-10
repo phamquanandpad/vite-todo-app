@@ -1,14 +1,20 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { tokenStorage } from '../auth/tokenStorage';
+import axios, { AxiosError } from 'axios';
+import type { AxiosRequestConfig } from 'axios';
+
+// Access token lives in memory (set by AuthContext).
+// Use a getter/setter so the interceptor always reads the latest value
+// without needing a direct dependency on React context.
+let _accessToken: string | null = null;
+export const setClientAccessToken = (token: string | null) => { _accessToken = token; };
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true, // send HttpOnly refresh cookie on every request
 });
 
 api.interceptors.request.use((config) => {
-  const token = tokenStorage.getAccess();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (_accessToken) config.headers.Authorization = `Bearer ${_accessToken}`;
   return config;
 });
 
@@ -16,30 +22,29 @@ api.interceptors.request.use((config) => {
 let refreshing: Promise<string> | null = null;
 
 async function refreshAccessToken(): Promise<string> {
-  const refreshToken = tokenStorage.getRefresh();
-  if (!refreshToken) throw new Error('No refresh token');
-  // Use a bare axios call so we don't recurse through this interceptor.
+  // Cookie is sent automatically (withCredentials). No body needed.
   const { data } = await axios.post(
     `${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/refresh`,
-    { refreshToken },
+    {},
+    { withCredentials: true },
   );
-  tokenStorage.set(data.accessToken, data.refreshToken);
+  _accessToken = data.accessToken;
   return data.accessToken;
 }
 
 api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
-    const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const original = error.config as AxiosRequestConfig & { _retry?: boolean };
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
       try {
         refreshing ??= refreshAccessToken().finally(() => { refreshing = null; });
         const newToken = await refreshing;
-        original.headers.Authorization = `Bearer ${newToken}`;
+        original.headers = { ...original.headers, Authorization: `Bearer ${newToken}` };
         return api(original);
       } catch {
-        tokenStorage.clear();
+        _accessToken = null;
         window.location.assign('/login');
       }
     }

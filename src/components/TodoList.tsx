@@ -1,4 +1,4 @@
-import { Todo } from '../types/api';
+import type { Todo } from '../types/api';
 import { TodoItem } from './TodoItem';
 
 export function TodoList({ todos }: { todos: Todo[] }) {
