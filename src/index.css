@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   --text: #6b6375;
   --text-h: #08060d;
@@ -51,11 +53,6 @@
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
   min-height: 100svh;
   display: flex;
   flex-direction: column;
@@ -64,6 +61,13 @@
 
 body {
   margin: 0;
+  background-color: #f9f9fb;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #0f1117;
+  }
 }
 
 h1,
