@@ -6,6 +6,8 @@ export interface Todo {
   description: string | null;
   status: TodoStatus;
   userId: number;
+  estimateStartAt: string | null;
+  estimateEndAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

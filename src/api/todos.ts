@@ -3,6 +3,7 @@ import type { Todo, Paginated, TodoStatus } from '../types/api';
 
 export interface TodoListParams {
   status?: TodoStatus;
+  overdue?: boolean;
   page?: number;
   limit?: number;
 }
@@ -11,6 +12,8 @@ export interface TodoInput {
   task: string;
   description?: string | null;
   status?: TodoStatus;
+  estimateStartAt?: string | null;
+  estimateEndAt?: string | null;
 }
 
 export interface DeletedTodoListParams {

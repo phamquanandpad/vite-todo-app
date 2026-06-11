@@ -3,10 +3,29 @@ import type { Todo } from '../types/api';
 import { useUpdateTodo, useDeleteTodo } from '../hooks/useTodos';
 import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
+import { useToast } from './toast/useToast';
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
+function isOverdue(todo: Todo): boolean {
+  return (
+    !!todo.estimateEndAt &&
+    todo.status !== 'completed' &&
+    todo.estimateEndAt <= todayStr()
+  );
+}
+
+function formatRange(todo: Todo): string | null {
+  if (!todo.estimateStartAt && !todo.estimateEndAt) return null;
+  const start = todo.estimateStartAt ?? '—';
+  const end = todo.estimateEndAt ?? '—';
+  return `${start} → ${end}`;
+}
 
 export function TodoItem({ todo }: { todo: Todo }) {
   const update = useUpdateTodo();
   const remove = useDeleteTodo();
+  const toast = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const statusOptions: Todo['status'][] = ['pending', 'in_progress', 'completed'];
@@ -25,6 +44,20 @@ export function TodoItem({ todo }: { todo: Todo }) {
               {todo.description}
             </p>
           )}
+          {formatRange(todo) && (
+            <div className="mt-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>{formatRange(todo)}</span>
+              {isOverdue(todo) && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                  Overdue
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3 flex-shrink-0">
@@ -37,9 +70,13 @@ export function TodoItem({ todo }: { todo: Todo }) {
             </button>
             <select
               value={todo.status}
-              onChange={(e) =>
-                update.mutate({ id: todo.id, body: { status: e.target.value as Todo['status'] } })
-              }
+              onChange={(e) => {
+                const nextStatus = e.target.value as Todo['status'];
+                update.mutate(
+                  { id: todo.id, body: { status: nextStatus } },
+                  { onSuccess: () => toast.info('Status updated', `${todo.task}: ${nextStatus.replace('_', ' ')}`) },
+                );
+              }}
               disabled={update.isPending}
               className="absolute inset-0 w-full opacity-0 cursor-pointer"
               title="Change status"
@@ -68,7 +105,9 @@ export function TodoItem({ todo }: { todo: Todo }) {
               <div className="absolute right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 z-10 whitespace-nowrap">
                 <button
                   onClick={() => {
-                    remove.mutate(todo.id);
+                    remove.mutate(todo.id, {
+                      onSuccess: () => toast.success('Todo deleted', todo.task),
+                    });
                     setShowDeleteConfirm(false);
                   }}
                   className="w-full text-left px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-sm font-medium transition-colors"

@@ -8,16 +8,28 @@ import type { ErrorResponse } from '../types/api';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Card } from './ui/Card';
+import { useToast } from './toast/useToast';
 
-const schema = z.object({
-  task: z.string().min(1, 'Task is required'),
-  description: z.string().optional(),
-  status: z.enum(['pending', 'in_progress', 'completed']).optional(),
-});
+const schema = z
+  .object({
+    task: z.string().min(1, 'Task is required'),
+    description: z.string().optional(),
+    status: z.enum(['pending', 'in_progress', 'completed']).optional(),
+    estimateStartAt: z.string().optional(),
+    estimateEndAt: z.string().optional(),
+  })
+  .refine(
+    (v) =>
+      !v.estimateStartAt ||
+      !v.estimateEndAt ||
+      v.estimateEndAt >= v.estimateStartAt,
+    { message: 'End date must be on or after start date', path: ['estimateEndAt'] },
+  );
 type FormValues = z.infer<typeof schema>;
 
 export function TodoForm() {
   const create = useCreateTodo();
+  const toast = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
   const {
     register,
@@ -31,16 +43,24 @@ export function TodoForm() {
   });
 
   const onSubmit = (values: FormValues) =>
-    create.mutate(values, {
-      onSuccess: () => {
-        reset();
-        setIsExpanded(false);
+    create.mutate(
+      {
+        ...values,
+        estimateStartAt: values.estimateStartAt || null,
+        estimateEndAt: values.estimateEndAt || null,
       },
-      onError: (err) => {
-        const apiErrors = (err as AxiosError<ErrorResponse>).response?.data?.errors;
-        apiErrors?.forEach((m) => setError('task', { message: m }));
+      {
+        onSuccess: (todo) => {
+          toast.success('Todo created', todo.task);
+          reset();
+          setIsExpanded(false);
+        },
+        onError: (err) => {
+          const apiErrors = (err as AxiosError<ErrorResponse>).response?.data?.errors;
+          apiErrors?.forEach((m) => setError('task', { message: m }));
+        },
       },
-    });
+    );
 
   if (!isExpanded) {
     return (
@@ -84,6 +104,35 @@ export function TodoForm() {
             <option value="in_progress">In Progress</option>
             <option value="completed">Completed</option>
           </select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Estimated start
+            </label>
+            <input
+              type="date"
+              {...register('estimateStartAt')}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-accent/50 focus:border-accent outline-none transition-colors"
+            />
+            {errors.estimateStartAt?.message && (
+              <p className="mt-1 text-xs text-red-600">{errors.estimateStartAt.message}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Estimated end
+            </label>
+            <input
+              type="date"
+              {...register('estimateEndAt')}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-accent/50 focus:border-accent outline-none transition-colors"
+            />
+            {errors.estimateEndAt?.message && (
+              <p className="mt-1 text-xs text-red-600">{errors.estimateEndAt.message}</p>
+            )}
+          </div>
         </div>
 
         <div className="flex gap-3 pt-2">

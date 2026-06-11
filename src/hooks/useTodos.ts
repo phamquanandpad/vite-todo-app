@@ -21,6 +21,7 @@ export function useCreateTodo() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: TodoInput) => todosApi.create(body),
+    meta: { silent: true },
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.all }),
   });
 }

@@ -113,3 +113,8 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+@keyframes slide-in-right {
+  from { transform: translateX(16px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}

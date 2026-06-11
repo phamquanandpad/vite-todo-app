@@ -8,10 +8,12 @@ import { Button } from '../components/ui/Button';
 
 export function TodosPage() {
   const [status, setStatus] = useState<TodoStatus | ''>('');
+  const [overdue, setOverdue] = useState(false);
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isError, error } = useTodos({
     status: status || undefined,
+    overdue: overdue || undefined,
     page,
     limit: 20,
   });
@@ -32,16 +34,17 @@ export function TodosPage() {
 
       <TodoForm />
 
-      <div className="flex gap-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit">
+      <div className="flex gap-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit flex-wrap">
         {filterOptions.map((option) => (
           <button
             key={option.value}
             onClick={() => {
               setStatus(option.value);
+              setOverdue(false);
               setPage(1);
             }}
             className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-              status === option.value
+              status === option.value && !overdue
                 ? 'bg-accent text-white shadow-md'
                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
             }`}
@@ -49,6 +52,20 @@ export function TodosPage() {
             {option.label}
           </button>
         ))}
+        <button
+          onClick={() => {
+            setOverdue((v) => !v);
+            setStatus('');
+            setPage(1);
+          }}
+          className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+            overdue
+              ? 'bg-red-600 text-white shadow-md'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+          }`}
+        >
+          Overdue
+        </button>
       </div>
 
       {isLoading && <SkeletonGrid count={3} />}

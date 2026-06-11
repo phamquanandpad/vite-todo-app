@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications, useUnreadCount, useMarkRead } from '../hooks/useNotifications';
 import { useNotificationStream } from '../hooks/useNotificationStream';
+import { useToast } from './toast/useToast';
 import type { Notification } from '../types/api';
 
 export function NotificationBell() {
@@ -10,9 +11,16 @@ export function NotificationBell() {
   const { data } = useNotifications();
   const { data: unread = 0 } = useUnreadCount();
   const markRead = useMarkRead();
+  const toast = useToast();
 
-  // Open the live cable subscription while the bell is mounted.
-  useNotificationStream();
+  useNotificationStream((n) => {
+    toast.show({
+      variant: 'info',
+      title: n.title,
+      body: n.body ?? undefined,
+      link: n.link ?? undefined,
+    });
+  });
 
   const handleClick = async (n: Notification) => {
     if (!n.read) await markRead.mutateAsync(n.id);
