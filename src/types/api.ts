@@ -40,3 +40,12 @@ export interface AuthResponse {
 export interface ErrorResponse {
   errors: string[];
 }
+
+export interface Notification {
+  id: number;
+  title: string;
+  body: string | null;
+  link: string | null;     // client-side path, e.g. "/todos/42"
+  read: boolean;
+  createdAt: string;
+}

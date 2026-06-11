@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 import { Button } from './ui/Button';
+import { NotificationBell } from './NotificationBell';
 
 export function Navbar() {
   const { logout } = useAuth();
@@ -62,6 +63,7 @@ export function Navbar() {
             <span className="hidden sm:inline text-sm font-medium">Trash</span>
           </Link>
 
+          <NotificationBell />
           <Button
             variant="ghost"
             onClick={() => logout()}
