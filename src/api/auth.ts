@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { api } from './client';
-import type { AuthResponse } from '../types/api';
+import type { AuthResponse, MeResponse } from '../types/api';
 
 const base = import.meta.env.VITE_API_BASE_URL;
 const jsonHeaders = { 'Content-Type': 'application/json', Accept: 'application/json' };
@@ -28,5 +28,7 @@ export const authApi = {
 
   // Cookie cleared by the backend.
   logout: () => api.delete('/api/v1/auth/logout'),
+
+  me: () => api.get<MeResponse>('/api/v1/auth/me').then((r) => r.data),
 };
 

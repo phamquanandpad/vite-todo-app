@@ -1,5 +1,15 @@
 export type TodoStatus = 'pending' | 'in_progress' | 'completed';
 
+export type Role = 'member' | 'admin';
+
+export interface MeResponse {
+  id: number;
+  username: string;
+  email: string;
+  role: Role;
+  permissions: string[];
+}
+
 export interface Todo {
   id: number;
   task: string;

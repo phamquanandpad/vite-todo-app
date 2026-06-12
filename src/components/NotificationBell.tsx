@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications, useUnreadCount, useMarkRead, useSendDemoNotification } from '../hooks/useNotifications';
 import { useNotificationStream } from '../hooks/useNotificationStream';
+import { usePermissions } from '../auth/PermissionsContext';
 import { useToast } from './toast/useToast';
 import type { Notification } from '../types/api';
 
@@ -13,6 +14,7 @@ export function NotificationBell() {
   const markRead = useMarkRead();
   const sendDemo = useSendDemoNotification();
   const toast = useToast();
+  const { can } = usePermissions();
 
   useNotificationStream((n) => {
     toast.show({
@@ -24,7 +26,7 @@ export function NotificationBell() {
   });
 
   const handleClick = async (n: Notification) => {
-    if (!n.read) await markRead.mutateAsync(n.id);
+    if (!n.read && can('notifications:read')) await markRead.mutateAsync(n.id);
     setOpen(false);
     if (n.link) navigate(n.link);
   };

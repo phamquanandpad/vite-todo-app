@@ -5,6 +5,7 @@ import { TodoForm } from '../components/TodoForm';
 import { TodoList } from '../components/TodoList';
 import { SkeletonGrid } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
+import { Can } from '../components/auth/Can';
 
 export function TodosPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -49,7 +50,9 @@ export function TodosPage() {
         <p className="text-gray-600 dark:text-gray-400">Stay organized and track your tasks</p>
       </div>
 
-      <TodoForm />
+      <Can permission="todos:create">
+        <TodoForm />
+      </Can>
 
       <div className="flex gap-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit flex-wrap">
         {filterOptions.map((option) => (

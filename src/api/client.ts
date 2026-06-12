@@ -7,6 +7,9 @@ import type { AxiosRequestConfig } from 'axios';
 let _accessToken: string | null = null;
 export const setClientAccessToken = (token: string | null) => { _accessToken = token; };
 
+let _on403: (() => void) | null = null;
+export const setOn403Handler = (fn: (() => void) | null) => { _on403 = fn; };
+
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
@@ -36,6 +39,10 @@ api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
     const original = error.config as AxiosRequestConfig & { _retry?: boolean };
+    if (error.response?.status === 403) {
+      _on403?.();
+      return Promise.reject(error);
+    }
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
       try {

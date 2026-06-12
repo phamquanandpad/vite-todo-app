@@ -1,11 +1,16 @@
 import type { Todo } from '../types/api';
 import { useRestoreTodo } from '../hooks/useTodos';
+import { useAuth } from '../auth/useAuth';
+import { usePermissions } from '../auth/PermissionsContext';
 import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 
 export function DeletedTodoItem({ todo }: { todo: Todo }) {
   const restore = useRestoreTodo();
+  const { userId } = useAuth();
+  const { can } = usePermissions();
+  const isOwner = todo.userId === userId;
 
   return (
     <li className={`transition-opacity ${restore.isPending ? 'opacity-50' : 'opacity-70'}`}>
@@ -23,6 +28,7 @@ export function DeletedTodoItem({ todo }: { todo: Todo }) {
 
         <div className="flex items-center gap-3 flex-shrink-0">
           <Badge status={todo.status} />
+          {can('todos:restore') && isOwner && (
           <Button
             variant="ghost"
             onClick={() => restore.mutate(todo.id)}
@@ -31,6 +37,7 @@ export function DeletedTodoItem({ todo }: { todo: Todo }) {
           >
             Restore
           </Button>
+          )}
         </div>
       </Card>
     </li>

@@ -1,5 +1,7 @@
 import type { Todo } from '../types/api';
 import { useUpdateTodo, useDeleteTodo, useRestoreTodo } from '../hooks/useTodos';
+import { useAuth } from '../auth/useAuth';
+import { usePermissions } from '../auth/PermissionsContext';
 import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { useToast } from './toast/useToast';
@@ -56,6 +58,9 @@ export function TodoItem({ todo, onEditStart }: {
   const remove = useDeleteTodo();
   const restore = useRestoreTodo();
   const toast = useToast();
+  const { userId } = useAuth();
+  const { can } = usePermissions();
+  const isOwner = todo.userId === userId;
 
   const statusOptions: Todo['status'][] = ['pending', 'in_progress', 'completed'];
   const isCompleted = todo.status === 'completed';
@@ -96,7 +101,7 @@ export function TodoItem({ todo, onEditStart }: {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0 flex-wrap sm:flex-nowrap">
-          {onEditStart && (
+          {onEditStart && can('todos:update') && isOwner && (
             <button
               onClick={onEditStart}
               className="text-gray-400 hover:text-accent transition-colors"
@@ -118,6 +123,7 @@ export function TodoItem({ todo, onEditStart }: {
             >
               <Badge status={todo.status} />
             </button>
+            {can('todos:complete') && isOwner && (
             <select
               value={todo.status}
               onChange={(e) => {
@@ -137,33 +143,36 @@ export function TodoItem({ todo, onEditStart }: {
                 </option>
               ))}
             </select>
+            )}
           </div>
 
-          <button
-            onClick={() => {
-              remove.mutate(todo.id, {
-                onError: () => toast.error('Failed to delete todo'),
-              });
-              toast.show({
-                title: 'Todo deleted',
-                body: todo.task,
-                variant: 'info',
-                duration: 6_000,
-                action: {
-                  label: 'Undo',
-                  onClick: () => restore.mutate(todo.id),
-                },
-              });
-            }}
-            disabled={remove.isPending}
-            className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-            aria-label="Delete todo"
-            title="Delete todo"
-          >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-          </button>
+          {can('todos:destroy') && isOwner && (
+            <button
+              onClick={() => {
+                remove.mutate(todo.id, {
+                  onError: () => toast.error('Failed to delete todo'),
+                });
+                toast.show({
+                  title: 'Todo deleted',
+                  body: todo.task,
+                  variant: 'info',
+                  duration: 6_000,
+                  action: {
+                    label: 'Undo',
+                    onClick: () => restore.mutate(todo.id),
+                  },
+                });
+              }}
+              disabled={remove.isPending}
+              className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+              aria-label="Delete todo"
+              title="Delete todo"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
         </div>
       </Card>
     </li>

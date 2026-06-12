@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { AxiosError } from 'axios';
 import { useAuth } from '../auth/useAuth';
+import { usePermissions } from '../auth/PermissionsContext';
 import { useUser, useUpdateUser, useDeleteUser } from '../hooks/useUser';
 import type { ErrorResponse } from '../types/api';
 import { Input } from '../components/ui/Input';
@@ -31,6 +32,7 @@ export function ProfilePage() {
   const { data: user, isLoading } = useUser(userId);
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
+  const { can } = usePermissions();
   const [serverError, setServerError] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState('');
@@ -132,7 +134,7 @@ export function ProfilePage() {
             </div>
           </div>
 
-          <Button type="submit" isLoading={isSubmitting} className="w-full">
+          <Button type="submit" isLoading={isSubmitting} disabled={!can('users:update')} className="w-full">
             {isSubmitting ? 'Saving…' : 'Save Changes'}
           </Button>
         </form>
@@ -149,7 +151,7 @@ export function ProfilePage() {
           <Button
             variant="danger"
             onClick={() => { setConfirmEmail(''); setShowDeleteDialog(true); }}
-            disabled={deleteUser.isPending}
+            disabled={deleteUser.isPending || !can('users:destroy')}
           >
             Delete
           </Button>

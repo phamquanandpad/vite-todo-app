@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
+import { usePermissions } from '../auth/PermissionsContext';
 import { Button } from './ui/Button';
 import { NotificationBell } from './NotificationBell';
 import { useTheme } from '../hooks/useTheme';
@@ -16,6 +17,7 @@ export function Navbar() {
   const { logout } = useAuth();
   const location = useLocation();
   const { mode, setMode } = useTheme();
+  const { can } = usePermissions();
 
   const isActive = (path: string) => location.pathname === path;
   const cycleTheme = () => {
@@ -47,6 +49,7 @@ export function Navbar() {
             <span className="hidden sm:inline text-sm font-medium">Todos</span>
           </Link>
 
+          {can('users:update') && (
           <Link
             to="/profile"
             className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
@@ -61,7 +64,9 @@ export function Navbar() {
             </svg>
             <span className="hidden sm:inline text-sm font-medium">Profile</span>
           </Link>
+          )}
 
+          {can('todos:deleted') && (
           <Link
             to="/deleted"
             className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
@@ -76,6 +81,7 @@ export function Navbar() {
             </svg>
             <span className="hidden sm:inline text-sm font-medium">Trash</span>
           </Link>
+          )}
 
           <NotificationBell />
           <button
