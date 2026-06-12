@@ -66,7 +66,7 @@ function QueryWithToast({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <ToastProvider>
           <QueryWithToast>            <ForbiddenHandler />
             <PermissionsProvider>            <Routes>
