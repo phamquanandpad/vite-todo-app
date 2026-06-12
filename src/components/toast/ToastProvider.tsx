@@ -4,10 +4,11 @@ import { createPortal } from 'react-dom';
 import type { ToastApi, ToastOptions, ToastVariant } from './types';
 import { ToastViewport } from './ToastViewport';
 
-interface ToastItem extends Required<Omit<ToastOptions, 'link' | 'body'>> {
+interface ToastItem extends Required<Omit<ToastOptions, 'link' | 'body' | 'action'>> {
   id: string;
   body?: string;
   link?: string;
+  action?: ToastOptions['action'];
 }
 
 const DEFAULT_DURATION: Record<ToastVariant, number> = {
@@ -36,6 +37,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       title: opts.title,
       body: opts.body,
       link: opts.link,
+      action: opts.action,
       variant,
       duration,
     };

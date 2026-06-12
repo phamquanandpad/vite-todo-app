@@ -1,11 +1,17 @@
 export type ToastVariant = 'info' | 'success' | 'warning' | 'error';
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 export interface ToastOptions {
   title: string;
   body?: string;
   variant?: ToastVariant;
   duration?: number;
   link?: string;
+  action?: ToastAction;
 }
 
 export interface ToastApi {

@@ -33,3 +33,7 @@ export function useMarkRead() {
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.all }),
   });
 }
+
+export function useSendDemoNotification() {
+  return useMutation({ mutationFn: () => notificationsApi.sendDemo() });
+}

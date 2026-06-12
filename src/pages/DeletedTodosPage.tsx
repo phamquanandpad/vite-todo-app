@@ -1,11 +1,18 @@
-import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useDeletedTodos } from '../hooks/useTodos';
 import { DeletedTodoItem } from '../components/DeletedTodoItem';
 import { SkeletonGrid } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
 
 export function DeletedTodosPage() {
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = parseInt(searchParams.get('page') ?? '1', 10);
+  const setPage = (n: number) =>
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (n > 1) next.set('page', String(n)); else next.delete('page');
+      return next;
+    });
   const { data, isLoading, isError, error } = useDeletedTodos({ page, limit: 20 });
 
   return (
@@ -45,7 +52,7 @@ export function DeletedTodosPage() {
               <div className="flex items-center justify-center gap-4 pt-4">
                 <Button
                   variant="ghost"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page <= 1}
                 >
                   ← Previous
@@ -56,7 +63,7 @@ export function DeletedTodosPage() {
                 </span>
                 <Button
                   variant="ghost"
-                  onClick={() => setPage((p) => p + 1)}
+                  onClick={() => setPage(page + 1)}
                   disabled={page >= data.meta.totalPages}
                 >
                   Next →

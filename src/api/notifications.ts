@@ -13,4 +13,6 @@ export const notificationsApi = {
     api.patch(`/api/v1/notifications/${id}/read`),
   markAllRead: () =>
     api.post('/api/v1/notifications/read_all'),
+  sendDemo: () =>
+    api.post<Notification>('/api/v1/notifications/demo').then((r) => r.data),
 };

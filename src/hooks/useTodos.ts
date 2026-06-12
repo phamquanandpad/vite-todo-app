@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { todosApi } from '../api/todos';
 import type { TodoListParams, TodoInput, DeletedTodoListParams } from '../api/todos';
+import type { Paginated, Todo } from '../types/api';
 
 const keys = {
   all: ['todos'] as const,
+  lists: ['todos', 'list'] as const,
   list: (p: TodoListParams) => ['todos', 'list', p] as const,
   deleted: (p: DeletedTodoListParams) => ['todos', 'deleted', p] as const,
   detail: (id: number) => ['todos', 'detail', id] as const,
@@ -31,7 +33,18 @@ export function useUpdateTodo() {
   return useMutation({
     mutationFn: ({ id, body }: { id: number; body: Partial<TodoInput> }) =>
       todosApi.update(id, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.all }),
+    onMutate: async ({ id, body }) => {
+      await qc.cancelQueries({ queryKey: keys.lists });
+      const snapshots = qc.getQueriesData<Paginated<Todo>>({ queryKey: keys.lists });
+      qc.setQueriesData<Paginated<Todo>>({ queryKey: keys.lists }, (old) =>
+        old ? { ...old, data: old.data.map((t) => (t.id === id ? { ...t, ...body } : t)) } : old,
+      );
+      return { snapshots };
+    },
+    onError: (_e, _v, ctx) => {
+      ctx?.snapshots.forEach(([k, d]) => qc.setQueryData(k, d));
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.all }),
   });
 }
 
@@ -39,7 +52,18 @@ export function useDeleteTodo() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => todosApi.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.all }),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: keys.lists });
+      const snapshots = qc.getQueriesData<Paginated<Todo>>({ queryKey: keys.lists });
+      qc.setQueriesData<Paginated<Todo>>({ queryKey: keys.lists }, (old) =>
+        old ? { ...old, data: old.data.filter((t) => t.id !== id) } : old,
+      );
+      return { snapshots };
+    },
+    onError: (_e, _v, ctx) => {
+      ctx?.snapshots.forEach(([k, d]) => qc.setQueryData(k, d));
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.all }),
   });
 }
 

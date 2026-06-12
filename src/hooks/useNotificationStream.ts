@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../auth/useAuth';
 import { getConsumer, disconnectConsumer } from '../api/cable';
@@ -10,6 +10,10 @@ type IncomingMessage = ConnectedPayload | Notification;
 export function useNotificationStream(onNotify?: (n: Notification) => void) {
   const { accessToken, isAuthenticated } = useAuth();
   const qc = useQueryClient();
+  // Keep a ref to the latest callback so the subscription effect doesn't need
+  // to re-run (and re-subscribe) every time the caller re-renders.
+  const onNotifyRef = useRef(onNotify);
+  useEffect(() => { onNotifyRef.current = onNotify; });
 
   useEffect(() => {
     if (!isAuthenticated || !accessToken) return;
@@ -18,7 +22,17 @@ export function useNotificationStream(onNotify?: (n: Notification) => void) {
     const subscription = consumer.subscriptions.create(
       { channel: 'NotificationsChannel' },
       {
+        connected() {
+          console.log('[ActionCable] NotificationsChannel connected');
+        },
+        disconnected() {
+          console.warn('[ActionCable] NotificationsChannel disconnected');
+        },
+        rejected() {
+          console.error('[ActionCable] NotificationsChannel subscription rejected');
+        },
         received(msg: unknown) {
+          console.log('[ActionCable] received:', msg);
           const incomingMsg = msg as IncomingMessage;
           if ('connected' in incomingMsg) {
             // Initial greeting: seed the unread count cache.
@@ -32,7 +46,7 @@ export function useNotificationStream(onNotify?: (n: Notification) => void) {
             (prev) => (prev ? { ...prev, data: [incomingMsg, ...prev.data] } : prev),
           );
           qc.invalidateQueries({ queryKey: ['notifications', 'unreadCount'] });
-          onNotify?.(incomingMsg); // optional: toast / sound
+          onNotifyRef.current?.(incomingMsg); // optional: toast / sound
         },
       },
     );
@@ -40,9 +54,11 @@ export function useNotificationStream(onNotify?: (n: Notification) => void) {
     return () => {
       subscription.unsubscribe();
     };
-    // Re-subscribe when the token rotates (refresh flow); the old consumer is
-    // disconnected inside getConsumer when the token changes.
-  }, [isAuthenticated, accessToken, qc, onNotify]);
+    // Re-subscribe only when the token rotates (refresh flow); the old consumer
+    // is disconnected inside getConsumer when the token changes.
+    // onNotify is intentionally excluded – we read it through onNotifyRef.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, accessToken, qc]);
 
   // Tear down the shared consumer entirely on logout.
   useEffect(() => {

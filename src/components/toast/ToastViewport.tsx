@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom';
-import type { ToastVariant } from './types';
+import type { ToastAction, ToastVariant } from './types';
 
 interface Item {
   id: string;
   title: string;
   body?: string;
   link?: string;
+  action?: ToastAction;
   variant: ToastVariant;
 }
 
@@ -32,7 +33,7 @@ export function ToastViewport({ items, onDismiss }: { items: Item[]; onDismiss: 
     <div
       role="region"
       aria-label="Notifications"
-      className="pointer-events-none fixed top-4 right-4 z-50 flex w-full max-w-sm flex-col gap-2"
+      className="pointer-events-none fixed top-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:left-auto z-50 flex w-auto sm:w-full sm:max-w-sm flex-col gap-2"
     >
       {items.map((t) => (
         <div
@@ -50,6 +51,14 @@ export function ToastViewport({ items, onDismiss }: { items: Item[]; onDismiss: 
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">{t.title}</p>
               {t.body && <p className="mt-0.5 text-xs opacity-90 break-words">{t.body}</p>}
+              {t.action && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); t.action!.onClick(); onDismiss(t.id); }}
+                  className="mt-1.5 text-xs font-semibold underline underline-offset-2 hover:no-underline"
+                >
+                  {t.action.label}
+                </button>
+              )}
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); onDismiss(t.id); }}

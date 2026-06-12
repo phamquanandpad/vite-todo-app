@@ -2,12 +2,26 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 import { Button } from './ui/Button';
 import { NotificationBell } from './NotificationBell';
+import { useTheme } from '../hooks/useTheme';
+import type { ThemeMode } from '../hooks/useTheme';
+
+const THEME_LABELS: Record<ThemeMode, string> = {
+  system: '⊙',
+  light: '☀',
+  dark: '☾',
+};
+const THEME_CYCLE: ThemeMode[] = ['system', 'light', 'dark'];
 
 export function Navbar() {
   const { logout } = useAuth();
   const location = useLocation();
+  const { mode, setMode } = useTheme();
 
   const isActive = (path: string) => location.pathname === path;
+  const cycleTheme = () => {
+    const idx = THEME_CYCLE.indexOf(mode);
+    setMode(THEME_CYCLE[(idx + 1) % THEME_CYCLE.length]);
+  };
 
   return (
     <nav className="sticky top-0 z-10 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-[#16171d]/80 backdrop-blur-sm">
@@ -17,7 +31,7 @@ export function Navbar() {
           <span className="text-lg">My Todos</span>
         </Link>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-1 sm:gap-4">
           <Link
             to="/"
             className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
@@ -64,12 +78,23 @@ export function Navbar() {
           </Link>
 
           <NotificationBell />
+          <button
+            onClick={cycleTheme}
+            className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label={`Theme: ${mode}. Click to cycle`}
+            title={`Theme: ${mode}`}
+          >
+            <span className="text-base leading-none">{THEME_LABELS[mode]}</span>
+          </button>
           <Button
             variant="ghost"
             onClick={() => logout()}
             className="!px-3 text-sm"
           >
-            Logout
+            <span className="hidden sm:inline">Logout</span>
+            <svg className="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
           </Button>
         </div>
       </div>

@@ -14,7 +14,7 @@ export function Button({
   className = '',
   ...props
 }: ButtonProps) {
-  const baseStyles = 'px-4 py-2.5 rounded-lg font-medium transition-all duration-200 outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-[#0f1117] disabled:opacity-50 disabled:cursor-not-allowed disabled:transition-none';
+  const baseStyles = 'px-4 py-2.5 rounded-lg font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0f1117] disabled:opacity-50 disabled:cursor-not-allowed disabled:transition-none';
 
   const variantStyles = {
     primary: 'bg-accent hover:bg-accent/90 active:scale-95 text-white focus:ring-accent/50 shadow-sm hover:shadow-md',

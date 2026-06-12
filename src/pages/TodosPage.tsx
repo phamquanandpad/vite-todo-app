@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTodos } from '../hooks/useTodos';
 import type { TodoStatus } from '../types/api';
 import { TodoForm } from '../components/TodoForm';
@@ -7,11 +7,28 @@ import { SkeletonGrid } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
 
 export function TodosPage() {
-  const [status, setStatus] = useState<TodoStatus | ''>('');
-  const [overdue, setOverdue] = useState(false);
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const status = (searchParams.get('status') as TodoStatus | null) ?? '';
+  const overdue = searchParams.get('overdue') === '1';
+  const page = parseInt(searchParams.get('page') ?? '1', 10);
 
-  const { data, isLoading, isError, error } = useTodos({
+  const setFilter = (updates: { status?: TodoStatus | ''; overdue?: boolean; page?: number }) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if ('status' in updates) {
+        if (updates.status) next.set('status', updates.status); else next.delete('status');
+      }
+      if ('overdue' in updates) {
+        if (updates.overdue) next.set('overdue', '1'); else next.delete('overdue');
+      }
+      if ('page' in updates) {
+        if (updates.page && updates.page > 1) next.set('page', String(updates.page)); else next.delete('page');
+      }
+      return next;
+    });
+  };
+
+  const { data, isLoading, isError, error, isFetching, isPlaceholderData } = useTodos({
     status: status || undefined,
     overdue: overdue || undefined,
     page,
@@ -39,9 +56,7 @@ export function TodosPage() {
           <button
             key={option.value}
             onClick={() => {
-              setStatus(option.value);
-              setOverdue(false);
-              setPage(1);
+              setFilter({ status: option.value, overdue: false, page: 1 });
             }}
             className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
               status === option.value && !overdue
@@ -54,9 +69,7 @@ export function TodosPage() {
         ))}
         <button
           onClick={() => {
-            setOverdue((v) => !v);
-            setStatus('');
-            setPage(1);
+            setFilter({ overdue: !overdue, status: '', page: 1 });
           }}
           className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
             overdue
@@ -83,32 +96,52 @@ export function TodosPage() {
               <svg className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
               </svg>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">No todos yet</h3>
-              <p className="text-gray-600 dark:text-gray-400">Create your first todo to get started</p>
+              {!status && !overdue ? (
+                <>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">No todos yet</h3>
+                  <p className="text-gray-600 dark:text-gray-400">Create your first todo to get started</p>
+                </>
+              ) : overdue ? (
+                <>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">Nothing overdue. Nice work! 🎉</h3>
+                  <button onClick={() => setFilter({ status: '', overdue: false, page: 1 })} className="mt-2 text-sm text-accent hover:underline">Show all todos</button>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
+                    No {status.replace('_', ' ')} todos
+                  </h3>
+                  <button onClick={() => setFilter({ status: '', overdue: false, page: 1 })} className="mt-2 text-sm text-accent hover:underline">Show all todos</button>
+                </>
+              )}
             </div>
           ) : (
             <>
-              <TodoList todos={data.data} />
-              <div className="flex items-center justify-center gap-4 pt-4">
-                <Button
-                  variant="ghost"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                >
-                  ← Previous
-                </Button>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Page <span className="font-medium text-gray-900 dark:text-white">{data.meta.page}</span> of{' '}
-                  <span className="font-medium text-gray-900 dark:text-white">{data.meta.totalPages}</span>
-                </span>
-                <Button
-                  variant="ghost"
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={page >= data.meta.totalPages}
-                >
-                  Next →
-                </Button>
+              <div className={`transition-opacity duration-200 ${isFetching && isPlaceholderData ? 'opacity-60' : 'opacity-100'}`}>
+                <TodoList todos={data.data} />
               </div>
+              {data.meta.totalPages > 1 && (
+                <div className="flex items-center justify-center gap-4 pt-4">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setFilter({ page: Math.max(1, page - 1) })}
+                    disabled={page <= 1 || (isFetching && isPlaceholderData)}
+                  >
+                    ← Previous
+                  </Button>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    Page <span className="font-medium text-gray-900 dark:text-white">{data.meta.page}</span> of{' '}
+                    <span className="font-medium text-gray-900 dark:text-white">{data.meta.totalPages}</span>
+                  </span>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setFilter({ page: page + 1 })}
+                    disabled={page >= data.meta.totalPages || (isFetching && isPlaceholderData)}
+                  >
+                    Next →
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </>

@@ -45,7 +45,11 @@ api.interceptors.response.use(
         return api(original);
       } catch {
         _accessToken = null;
-        window.location.assign('/login');
+        const from = window.location.pathname + window.location.search;
+        const loginUrl = from && from !== '/login'
+          ? `/login?from=${encodeURIComponent(from)}&expired=1`
+          : '/login';
+        window.location.assign(loginUrl);
       }
     }
     return Promise.reject(error);

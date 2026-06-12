@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,6 +18,9 @@ type FormValues = z.infer<typeof schema>;
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const from = searchParams.get('from') ?? '/';
+  const isExpired = searchParams.get('expired') === '1';
   const [serverError, setServerError] = useState<string | null>(null);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } =
@@ -27,7 +30,7 @@ export function LoginPage() {
     setServerError(null);
     try {
       await login(values.email, values.password);
-      navigate('/');
+      navigate(from);
     } catch (err) {
       const apiErrors = (err as AxiosError<ErrorResponse>).response?.data?.errors;
       setServerError(apiErrors?.join(', ') ?? 'Login failed');
@@ -43,6 +46,12 @@ export function LoginPage() {
           </div>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white ml-3">My Todos</h1>
         </div>
+
+        {isExpired && (
+          <div className="mb-6 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-700 dark:text-amber-300 text-sm">
+            Your session expired. Please log in again.
+          </div>
+        )}
 
         {serverError && (
           <div className="mb-6 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm flex items-center gap-2">
