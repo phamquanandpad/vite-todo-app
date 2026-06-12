@@ -6,6 +6,7 @@ import { AuthProvider } from './auth/AuthContext';
 import { ToastProvider } from './components/toast/ToastProvider';
 import { useToast } from './components/toast/useToast';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { GuestRoute } from './components/GuestRoute';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { TodosPage } from './pages/TodosPage';
@@ -52,8 +53,10 @@ export default function App() {
         <ToastProvider>
           <QueryWithToast>
             <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+              <Route element={<GuestRoute />}>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+              </Route>
               <Route element={<ProtectedRoute />}>
                 <Route path="/" element={<TodosPage />} />
                 <Route path="/profile" element={<ProfilePage />} />

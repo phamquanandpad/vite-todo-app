@@ -33,7 +33,7 @@ export function ToastViewport({ items, onDismiss }: { items: Item[]; onDismiss: 
     <div
       role="region"
       aria-label="Notifications"
-      className="pointer-events-none fixed top-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:left-auto z-50 flex w-auto sm:w-full sm:max-w-sm flex-col gap-2"
+      className="pointer-events-none fixed top-20 inset-x-4 sm:inset-x-auto sm:right-4 sm:left-auto z-50 flex w-auto sm:w-full sm:max-w-xs flex-col gap-2"
     >
       {items.map((t) => (
         <div
