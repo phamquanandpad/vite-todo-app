@@ -110,7 +110,7 @@ export function NotificationBell() {
               <p className="text-sm">You're all caught up</p>
             </div>
           ) : (
-            data!.data.map((n) => (
+            data?.data.map((n) => (
               <button
                 key={n.id}
                 onClick={() => handleClick(n)}
