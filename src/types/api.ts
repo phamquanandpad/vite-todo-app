@@ -27,6 +27,7 @@ export interface User {
   username: string;
   email: string;
   role: string;
+  permissionsCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,6 +52,49 @@ export interface AuthResponse {
 
 export interface ErrorResponse {
   errors: string[];
+}
+
+export interface Permission {
+  id: number;
+  name: string;
+  description: string | null;
+  builtin: boolean;
+  roles: string[];
+  usersCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PermissionInput {
+  name: string;
+  description?: string;
+  roles?: string[];
+}
+
+export interface PermissionListParams {
+  q?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface PermissionUser {
+  id: number;
+  username: string;
+  email: string;
+  role: Role;
+  granted: boolean;
+}
+
+export interface PermissionUsersParams {
+  q?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface UserListParams {
+  q?: string;
+  page?: number;
+  limit?: number;
 }
 
 export interface Notification {
