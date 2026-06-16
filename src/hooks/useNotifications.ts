@@ -37,3 +37,11 @@ export function useMarkRead() {
 export function useSendDemoNotification() {
   return useMutation({ mutationFn: () => notificationsApi.sendDemo() });
 }
+
+export function useMarkAllRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => notificationsApi.markAllRead(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.all }),
+  });
+}

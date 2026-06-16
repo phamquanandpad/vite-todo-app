@@ -50,9 +50,7 @@ function formatDateRange(todo: Todo): string | null {
 
 export function TodoItem({ todo, onEditStart }: {
   todo: Todo;
-  isEditing?: boolean;
   onEditStart?: () => void;
-  onEditEnd?: () => void;
 }) {
   const update = useUpdateTodo();
   const remove = useDeleteTodo();
@@ -75,7 +73,7 @@ export function TodoItem({ todo, onEditStart }: {
             {todo.task}
           </h3>
           {todo.description && (
-            <p className={`text-sm mt-1 ${isCompleted ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-600 dark:text-gray-400'}`}>
+            <p className={`text-sm mt-1 ${isCompleted ? 'text-gray-500 dark:text-gray-400 line-through' : 'text-gray-600 dark:text-gray-400'}`}>
               {todo.description}
             </p>
           )}

@@ -6,6 +6,7 @@ import { useCreateTodo } from '../hooks/useTodos';
 import type { ErrorResponse } from '../types/api';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
+import { Dialog } from './ui/Dialog';
 import { useToast } from './toast/useToast';
 import { TodoFields, todoSchema } from './TodoFields';
 import type { TodoFieldValues } from './TodoFields';
@@ -13,7 +14,7 @@ import type { TodoFieldValues } from './TodoFields';
 export function TodoForm() {
   const create = useCreateTodo();
   const toast = useToast();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
   const collapsedRef = useRef<HTMLDivElement>(null);
   const {
     register,
@@ -26,10 +27,9 @@ export function TodoForm() {
     defaultValues: { status: 'pending' },
   });
 
-  const collapse = () => {
-    setIsExpanded(false);
+  const close = () => {
+    setOpen(false);
     reset();
-    // Return focus to the collapsed card
     setTimeout(() => collapsedRef.current?.focus(), 0);
   };
 
@@ -43,7 +43,7 @@ export function TodoForm() {
       {
         onSuccess: (todo) => {
           toast.success('Todo created', todo.task);
-          collapse();
+          close();
         },
         onError: (err) => {
           const apiErrors = (err as AxiosError<ErrorResponse>).response?.data?.errors;
@@ -52,14 +52,19 @@ export function TodoForm() {
       },
     );
 
-  if (!isExpanded) {
-    return (
+  return (
+    <>
       <Card
         className="cursor-pointer hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
-        onClick={() => setIsExpanded(true)}
+        onClick={() => setOpen(true)}
         tabIndex={0}
         ref={collapsedRef}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsExpanded(true); } }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
       >
         <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
           <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -68,27 +73,19 @@ export function TodoForm() {
           <span className="text-sm font-medium">Add a todo…</span>
         </div>
       </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="space-y-4"
-        onKeyDown={(e) => { if (e.key === 'Escape') collapse(); }}
-      >
-        <TodoFields register={register} errors={errors} />
-
-        <div className="flex gap-3 pt-2">
-          <Button type="submit" isLoading={create.isPending}>
-            {create.isPending ? 'Adding…' : 'Add Todo'}
-          </Button>
-          <Button type="button" variant="ghost" onClick={collapse}>
-            Cancel
-          </Button>
-        </div>
-      </form>
-    </Card>
+      <Dialog open={open} title="New Todo" onClose={close}>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <TodoFields register={register} errors={errors} />
+          <div className="flex gap-3 pt-2 justify-end">
+            <Button type="button" variant="ghost" onClick={close}>
+              Cancel
+            </Button>
+            <Button type="submit" isLoading={create.isPending}>
+              {create.isPending ? 'Adding…' : 'Add Todo'}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+    </>
   );
 }

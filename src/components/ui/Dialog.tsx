@@ -8,7 +8,7 @@ interface DialogProps {
   description?: string;
   confirmLabel?: string;
   confirmDisabled?: boolean;
-  onConfirm: () => void;
+  onConfirm?: () => void;
   onClose: () => void;
   children?: ReactNode;
   variant?: 'default' | 'destructive';
@@ -48,7 +48,7 @@ export function Dialog({
       onClose={onClose}
       onClick={handleBackdropClick}
       onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
-      className="rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f2028] p-0 max-w-md w-full backdrop:bg-black/40 backdrop:backdrop-blur-sm open:motion-safe:animate-[fade-in_150ms_ease-out]"
+      className="inset-0 m-auto rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f2028] p-0 max-w-md w-full max-h-[90vh] overflow-y-auto backdrop:bg-black/40 backdrop:backdrop-blur-sm open:motion-safe:animate-[modal-in_150ms_ease-out]"
     >
       <div className="p-6 space-y-4">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
@@ -56,19 +56,21 @@ export function Dialog({
           <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
         )}
         {children}
-        <div className="flex gap-3 pt-2 justify-end">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            variant={variant === 'destructive' ? 'danger' : 'primary'}
-            onClick={onConfirm}
-            disabled={confirmDisabled}
-          >
-            {confirmLabel}
-          </Button>
-        </div>
+        {onConfirm !== undefined && (
+          <div className="flex gap-3 pt-2 justify-end">
+            <Button type="button" variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant={variant === 'destructive' ? 'danger' : 'primary'}
+              onClick={onConfirm}
+              disabled={confirmDisabled}
+            >
+              {confirmLabel}
+            </Button>
+          </div>
+        )}
       </div>
     </dialog>
   );
