@@ -14,6 +14,8 @@ import { RegisterPage } from './pages/RegisterPage';
 import { TodosPage } from './pages/TodosPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { DeletedTodosPage } from './pages/DeletedTodosPage';
+import { PermissionsAdminPage } from './pages/PermissionsAdminPage';
+import { UsersAdminPage } from './pages/UsersAdminPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { setOn403Handler } from './api/client';
 import type { ErrorResponse } from './types/api';
@@ -84,6 +86,16 @@ export default function App() {
                 <Route path="/deleted" element={
                   <RequirePermission permission="todos:deleted">
                     <DeletedTodosPage />
+                  </RequirePermission>
+                } />
+                <Route path="/admin/permissions" element={
+                  <RequirePermission permission="permissions:index">
+                    <PermissionsAdminPage />
+                  </RequirePermission>
+                } />
+                <Route path="/admin/users" element={
+                  <RequirePermission permission="users:index">
+                    <UsersAdminPage />
                   </RequirePermission>
                 } />
               </Route>

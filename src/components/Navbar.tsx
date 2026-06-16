@@ -83,6 +83,40 @@ export function Navbar() {
           </Link>
           )}
 
+          {can('permissions:index') && (
+          <Link
+            to="/admin/permissions"
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+              isActive('/admin/permissions')
+                ? 'text-accent font-medium'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+            }`}
+            title="Permissions"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+            </svg>
+            <span className="hidden sm:inline text-sm font-medium">Permissions</span>
+          </Link>
+          )}
+
+          {can('users:index') && (
+          <Link
+            to="/admin/users"
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+              isActive('/admin/users')
+                ? 'text-accent font-medium'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+            }`}
+            title="Users"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+            </svg>
+            <span className="hidden sm:inline text-sm font-medium">Users</span>
+          </Link>
+          )}
+
           <NotificationBell />
           <button
             onClick={cycleTheme}
